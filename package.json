@@ -1,0 +1,26 @@
+{
+  "name": "suite-n-sour.js",
+  "version": "0.0.1",
+  "description": "SOAP-FREE NetSuite for Node.js! Runs on the same internal api calls that the online user interface does for speed, simplicity, and sexiness!",
+  "main": "index.js",
+  "dependencies": {
+  },
+  "devDependencies": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eibbors/suite-n-sour.git"
+  },
+  "keywords": [
+    "netsuite",
+    "suitescript",
+    "suitetalk",
+    "soap",
+    "nlapi",
+    "netledger",
+    "CRM",
+    "integration"
+  ],
+  "author": "Robbie Saunders (aka eibbors)",
+  "license": "GPL"
+}
