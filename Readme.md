@@ -30,8 +30,10 @@ nd.loginAs('your@email.com', 'yourpassword', 'yourcompanyid', 3 /*role*/, functi
 
 ## License
 
-  Working on it... Contact me if you have an urgent question
+  GPLv3 with propietary licensing options available to NetSuite consultation firms and anyone interested in reselling suite-n-sour based integration services. If you have any questions, it's probably better to be safe than sorry and shoot me an e-mail. 
 
+  NETSUITE® and SuiteScript™ are registered trademarks or service marks of NetSuite, Inc.
+  
 <3 Always
 
 Eibbor Srednuas

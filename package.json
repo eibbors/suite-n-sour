@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "description": "SOAP-FREE NetSuite for Node.js! Runs on the same internal api calls that the online user interface does for speed, simplicity, and sexiness!",
   "main": "index.js",
-  "dependencies": {
+  "dependencies" : {
+    "xml2js" : ">=0.1.13"
   },
   "devDependencies": {
   },
@@ -22,5 +23,5 @@
     "integration"
   ],
   "author": "Robbie Saunders (aka eibbors)",
-  "license": "GPL"
+  "license": "GPLv3 with proprietary licensing available"
 }

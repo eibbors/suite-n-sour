@@ -113,7 +113,7 @@ class NsRpcClient extends EventEmitter
     options = 
       body: body ? payload ? ''
       headers: {'content-type': 'text/xml; charset=utf-8'}
-    @post path, options, cb
+    @post path ? XMLR_HANDLER, options, cb
  
     
 # Abstract HTTPS response container with helpers to handle NetSuite's supported data formats

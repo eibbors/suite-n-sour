@@ -35,7 +35,8 @@ renderXML = (obj) ->
   for key, value of obj
     switch typeof value
       when 'object'
-        if Array.isArray(value)
+        if value is null then continue
+        else if Array.isArray(value)
           for ai in value
             sibl = {}
             sibl[key] = ai
@@ -55,7 +56,7 @@ renderXML = (obj) ->
             pload += ">#{renderXML(value)}</#{key}>"
       when 'function'
         pload += "<#{key}>#{value()}</#{key}>"
-      when 'undefined', null
+      when 'undefined'
         pload += "<#{key}/>"
       else
         pload += "<#{key}>#{value}</#{key}>"
