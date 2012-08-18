@@ -248,11 +248,11 @@ class NsUiClient extends rpc.Client
     @nlapir attr, el, {}, cb
 
   # nlapiSendFax request - not sure what this one does... hmmm fax someone perhaps?
-  sendFax: (author, recipient, subject, body, cc=null, bcc=null, records={}, cb) ->
+  sendFax: (author, recipient, subject, body, records, cb) ->
+    rf = ['transaction', 'entity', 'recordType', 'record', 'activity']
     attr = { type: 'nlapiSendFax' }
     el = { author, recipient, subject, body }
-    for k in ['transaction', 'entity', 'recordType', 'record', 'activity']
-      if records[k]? then el[k] = records[k]
+    if records then (el[rf[k]] = records[rf[k]]) for k in rf
     @nlapir attr, el, {}, cb
 
  #----------------------------------------------------------
