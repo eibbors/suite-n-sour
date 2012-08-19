@@ -20,6 +20,7 @@ class NsUiClient extends rpc.Client
     nr = { nlapiRequest: elements }
     @xmlr options.path ? undefined,  nr, (res) ->
       if res.statusCode is 200
+        console.log res.body
         res.parseBody 'xml', (parsed) ->
           cb parsed, res
       else cb null, res
@@ -213,30 +214,65 @@ class NsUiClient extends rpc.Client
  # Standard NLAPI (NSXML) Requests - Older API methods
  #----------------------------------------------------------
 
-  # Save some space 
-  _nlapiRecReq: (attr, el, cb) ->
+  # Save some space by reusing common nlapi...Record code
+  _nlapiRecReq: (attr, params, cb) ->
+    if params then el = { loadParams: params } else el = {}
     @nlapir attr, el, {}, (parsed, res) =>
       if parsed then cb new NsRecord().extract(res.parsed), res
       else cb parsed, res
 
   # nlapiCreateRecord request - instantiates a record object with the values of initDefaults
   # filled in already. See NsRecord class for more information 
-  createRecord: (recordType, initDefaults, cb) ->
+  createRecord: (recordType, initializeDefaults, cb) ->
     attr = { type: 'nlapiCreateRecord', recordType }
-    if initDefaults then el = { loadParams: initDefaults } else el = {}
-    @_nlapiRecReq attr, el, cb
+    @_nlapiRecReq attr, initializeDefaults, (rec, res) ->
+      if rec then rec.logOperation 'createRecord', {initializeDefaults}
+      cb rec, res
 
   # nlapiLoadRecord request - loads (instantiates) an existing record 
-  loadRecord: (recordType, id, initDefaults, cb) ->
+  loadRecord: (recordType, id, initializeDefaults, cb) ->
     attr = { type: 'nlapiLoadRecord', recordType, id }
-    if initDefaults then el = { loadParams: initDefaults } else el = {}
-    @_nlapiRecReq attr, el, cb
+    @_nlapiRecReq attr, initializeDefaults, (rec, res) ->
+      if rec then rec.logOperation 'loadRecord', {id, initializeDefaults}
+      cb rec, res
 
   # nlapiCopyRecord request - clones an existing record
-  copyRecord: (recordType, id, initDefaults, cb) ->
+  copyRecord: (recordType, id, initializeDefaults, cb) ->
     attr = { type: 'nlapiCopyRecord', recordType, id }
-    if initDefaults then el = { loadParams: initDefaults } else el = {}
-    @_nlapiRecReq attr, el, cb
+    @_nlapiRecReq attr, initializeDefaults, (rec, res) ->
+      if rec then rec.logOperation 'copyRecord', {id, initializeDefaults}
+      cb rec, res
+
+  # nlapiTransformRecord request - transform existing record (like sales orders into cash sale)
+  transformRecord: (recordType, id, transformType, transformDefaults, cb) ->
+    attr = { type: 'nlapiTransformRecord', recordType, id, transformType }
+    @_nlapiRecReq attr, transformDefaults, (rec, res) ->
+      if rec then rec.logOperation 'transformRecord', { type: recordType, id, transformType, transformDefaults }
+      cb rec, res
+
+  # nlapiSubmitRecord request - commit changes (operations) from NsRecord (or custom) object
+  # optional boolean properties: enableSourcing, disableTriggers, ignoreMandatoryFields
+  submitRecord: (record, options, cb) ->
+    attr = 
+      type: 'nlapiSubmitRecord'
+      enableSourcing: options.enableSourcing ? true
+      disableTriggers: options.disableTriggers ? false
+      ignoreMandatoryFields: options.ignoreMandatoryFields ? true
+    if typeof record.serialize is 'function' then el = record.serialize() else el = { record }
+    @nlapir attr, el, {}, cb
+
+  # nlapiSubmitField request - commit field changes, 
+  # options are identical to submitRecord options above, without ignoreMandatoryFields
+  # fields is a simple object map ie: { name: 'bob', age:15, sex:'yes please' }
+  submitField: (recordType, id, fields, options, cb) ->
+    attr = 
+      type: 'nlapiSubmitField'
+      recordType: recordType 
+      id: id
+      enableSourcing: options.enableSourcing ? false
+      disableTriggers: options.disableTriggers ? false
+    el = {field: {name: k, value: v}} for k,v of fields
+    @nlapir attr, el, {}, cb
 
   # nlapiSendEmail request - sends... drumroll please...AN EMAIL!
   # note, author should b 
@@ -255,6 +291,20 @@ class NsUiClient extends rpc.Client
     if records then (el[rf[k]] = records[rf[k]]) for k in rf
     @nlapir attr, el, {}, cb
 
+  # nlapiRequestURL request - not very many legit reasons to use this come to mind, but it's here
+  # when posting, putting, etc: if body is an object, it will be translated to xml so use qs.stringify
+  # or JSON.stringify for form/json data respectively
+  requestURL: (method='POST', url, query, body, headers, cb) ->
+    attr = { type: 'nlapiRequestURL' }
+    el = { url, method, body }
+    for name, value of query
+      el.param ?= []
+      el.param.push { name, value } 
+    for name, value of headers
+      el.header ?= []
+      el.header.push { name, value }
+    @nlapir attr, el, {}, cb
+    
  #----------------------------------------------------------
  # Functions for working with menu data & lists (including some search results)
  #----------------------------------------------------------
@@ -430,20 +480,34 @@ class NsRecord
     for key, value of rec
       switch key
         when '@' # Attributes of the record node
+          @id = value.id ? null
           @recordType = value.recordType ? null
           @fieldNames = value.fields.split(',') ? []
           @permLevel = value.perm ? -1    
         when 'machine' # Array of machines
           for mach in value
             matts = mach['@'] ? {}
-            @lineItems[matts.name] = mach['line'] ? []
+            if Array.isArray mach.line then @lineItems[matts.name] = mach.line
+            else if mach.line? then  @lineItems[matts.name] = [mach.line]
             @lineTypes[matts.name] = matts.type ? null
             @lineFields[matts.name] = matts.fields?.split(',')
             if matts.matrixfields?
               @matrixFields[matts.name] = matts.matrixfields.split(',')
         else # Any other nodes should be simple fields
-          @fields[key] = value 
+          @setFld key, value
+    @initialized = true
     return @
+
+  # Generate a record object to be converted into XML payload
+  serialize: () =>
+    ops = []
+    type = 'load'
+    for op in @operations
+      el = op.args
+      el['@'] = { type, name: op.operation }
+      ops.push { operation: el }
+      type = 'data'
+    return {record: { '@': { recordType: @recordType, id: @id ? null }, operations: ops }}
 
   # Changes to the record are logged as operations, enabling batch processing within
   # a single nlapiRequest, which is why records need to be commited after being edited
@@ -452,11 +516,13 @@ class NsRecord
 
   # Set single field value
   setFieldValue: (name, value) ->
+    @fields[name] = value
     @logOperation 'setFieldValue', { field: name, value }
 
   # Set multi-select field values 
   setFieldValues: (name, values) ->
     if not Array.isArray(values) then values = [values]
+    @fields[name] = values
     @logOperation 'setFieldValues', { field: name, value: values }
 
   # Chainable convenience method for setting field values, accepts singular values, single
@@ -471,7 +537,7 @@ class NsRecord
       else @setFieldValue name, value
     return @
 
-  # TODO: Double check validity
+  # TODO: Finish sublist reverse engineering / testing
   # Inserts a blank line item at a given line # for sublist type
   insertLineItem: (type, line) ->
     @lineitems[type] ?= []
@@ -483,12 +549,27 @@ class NsRecord
     @lineitems[type]?.splice line, 1
     @logOperation 'removeLineItem', { type }
 
+  # Log line item selection + initialize new current properties
+  selectLineItem: (type, linenum) ->
+    @currentLineItems[type] = {}
+    @currentLineItemIndexes[type] = linenum
+    (@currentLineItems[type][key] = value) for key, value of @lineItems[type]
+    @logOperation 'selectLineNum', { type, linenum }
+
+  # Not understanding how NetSuite expects these to work yet
+  selectNewLineItem: (type) ->
+    if @lineTypes[type] isnt 'edit' then throw 'Invalid sublist operation'
+    @currentLineItems[type] = {}
+    @currentLineIndexes[type] = @lineItems[type].length + 1
+    @logOperation 'selectNewLineItem', { type }
+
   # Set matrix value operation
   setMatrixValue: (type, field, column, value) ->
     fh = @fields["#{type}header"] ? null
     @fields["#{fh}#{column}"] = value 
     @logOperation 'setMatrixValue', { type, field, column, value }
 
+  # Helper to determine whether or not a field is a matrix field
   isMatrixField: (type, field) ->
     field in @fields["#{type}matrixfields"]?.split(',')
 
