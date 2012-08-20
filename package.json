@@ -1,6 +1,6 @@
 {
   "name": "suite-n-sour.js",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "description": "SOAP-FREE NetSuite for Node.js! Runs on the same internal api calls that the online user interface does for speed, simplicity, and sexiness!",
   "main": "index.js",
   "dependencies" : {

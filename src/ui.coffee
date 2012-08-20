@@ -136,6 +136,14 @@ class NsUiClient extends rpc.Client
         @session.taskLinks = res.result ? {}
       cb res, @session.taskLinks
 
+  # Downloads basic metadata for available record types, results are keyed by type id
+  # @sample: { 'type': { id: 'type', scriptable: true, ... }, ... }
+  getRecordTypes: (cb) -> 
+    @jsonr 'getRecordTypes', [], {}, (res) =>
+      if not res.error
+        @session.recordTypes = res.result ? {}
+      cb res, @session.recordTypes
+
   # Request a list of the amount of usage `credits` various nlapi methods cost
   # @ssample: { nlobjWebStoreOrderImpl_addItems: 20, nlapiSendCampaignEmail: 10 }
   getUsageUnits: (cb) ->
@@ -144,13 +152,9 @@ class NsUiClient extends rpc.Client
         @session.usageUnits = res.result ? {}
       cb res, @session.usageUnits
 
-  # Downloads basic metadata for available record types, results are keyed by type id
-  # @sample: { 'type': { id: 'type', scriptable: true, ... }, ... }
-  getRecordTypes: (cb) -> 
-    @jsonr 'getRecordTypes', [], {}, (res) =>
-      if not res.error
-        @session.recordTypes = res.result ? {}
-      cb res, @session.recordTypes
+  # Fetch the total available usage units under current context/conditions
+  getTotalScriptGovernance: (bundle=-1, cb) ->
+    @jsonr 'getTotalScriptGovernance', [bundle], {}, cb
 
   # Encrypt clear text using common algorithms (verified: sha1, aes, base64, xor)
   # Make sure your chosen algorithm supports keys if running into problems
@@ -172,10 +176,10 @@ class NsUiClient extends rpc.Client
     dateStr = "#{effectDate.getMonth() + 1}/#{effectDate.getDate()}/#{effectDate.getFullYear()}"
     @jsonr 'exchangeRate', [fromCurrency, toCurrency, dateStr], {}, cb
 
-  # Execute a global keyword search and return SearchResults object
+  # Execute a global keyword search and return NsSearchResults object
   searchGlobal: (keywords, cb) ->
     @jsonr 'searchGlobal', [keywords], {}, (res) ->
-      cb new SearchResults(res?.result)
+      cb new NsSearchResults(res?.result), res
 
   # Perform a duplicate record search for (record) type by fields object or search id
   searchDuplicate: (type, fields, id, cb) ->
@@ -186,16 +190,57 @@ class NsUiClient extends rpc.Client
   # Get the set of possible search columns for a particular record type
   getSearchColumns: (type, filter, op, cb) ->
     @jsonr 'getSearchColumns', [type, filter, op], {}, (res) ->
-      cb res.result
+      cb res.result, res
+
+  # Fetch filter expressions given search filter objects in either format:
+  buildSearchFilterExpression: (filters..., cb) ->
+    filterSet = []
+    for filter in filters
+      if Array.isArray filter then filterSet = filterSet.concat(filter)
+      else filterSet.push filter
+    @jsonr 'buildSearchFilterExpression', [filterSet], {method: 'POST'}, cb
+
+  # Not really sure what good this is for...
+  # TODO: investigate usage
+  parseSearchFilterExpression: (filterExpression, cb) ->
+    @jsonr 'parseSearchFilterExpression', [filterExpression], {method: 'POST'}, cb
 
   # Execute a search for a certain record type
   searchRecord: (type, id, filters=[], columns=[], cb) ->
     if not Array.isArray filters then filters = [filters]
     if not Array.isArray columns then columns = [columns]
     @jsonr 'searchRecord', [type, id, filters, columns], {method: 'POST'}, (res) ->
-      cb new SearchResults(res?.result)
+      cb new NsSearchResults(res?.result), res
 
-  # Fetch the URL of a NS resource TASKLINK/RECORD/SUITELET
+  # Load existing marshalled nlobjSearch properties from server 
+  loadSearch: (type, searchId, cb) ->
+    @jsonr 'loadSearch', [type, searchId], {}, (res) ->
+      s = new NsSearch(type, searchId, [], []).extract(res.result)
+      cb s, res
+
+  # Attempts to save full blown searches, will fail for ADHOC searchinga
+  saveSearch: (title, search, cb) ->
+    args = [title, search.scriptId, search.type, search.searchId, 
+             search.filters, search.columns, search.isPublic]
+    @jsonr 'saveSearch', args, {}, cb
+
+  # Delete an existing search for recordtype/searchid
+  deleteSearch: (type, searchId, cb) ->
+    @jsonr 'deleteSearch', [type, searchId], {}, cb
+
+  # Request search page (data used to generate search forms
+  prepareSearchPage: (type, searchId, filters=[], columns=[], cb) ->
+    @jsonr 'prepareSearchPage', [type, searchId, filters, columns], {}, cb
+
+  # Requst results of provided search
+  prepareSearchResults: (type, searchId, filters=[], columns=[], cb) ->
+    @jsonr 'prepareSearchResults', [type, searchId, filters, columns], {}, cb
+
+  # Retrieve subset of provided search's results (like Array.slice function)
+  searchRecordSlice: (type, searchId, filters=[], columns=[], start, end, cb) ->
+    @jsonr 'searchRecordSlice', [type, searchId, filters, columns, start, end], {}, cb
+
+  # Fetch the URL of a NS resource TASKLINK/RECORD/SUITELET 
   resolveURL: (type, identifier, id, pagemode, cb) ->
     switch type.toLowerCase()
       when 'suitelet'
@@ -206,12 +251,29 @@ class NsUiClient extends rpc.Client
         else if pagemode is false then pagemode = 'view'
     @jsonr 'resolveURL', [type, identifier ? null, id ? null, pagemode ? null], {}, cb
 
-  # Fetch the total usage allowed by current context
-  getTotalScriptGovernance: (bundle=-1, cb) ->
-    @jsonr 'getTotalScriptGovernance', [bundle], {}, cb
+  # Attach a single record (src) to another one (dest)
+  # TODO: find enumerations or trigger legit use of options param
+  attachRecord: (srcType, srcId, destType, destId, options, cb) ->
+    @jsonr 'attachRecord', [srcType, srcId, destType, destId, options ? {}], {}, cb
+
+  # Detach a record from one another (first type/id is for attached record)
+  # TODO: find options param information
+  detachRecord: (type, id, parentType, parentId, options, cb) ->
+    @jsonr 'attachRecord', [srcType, srcId, destType, destId, options ? {}], {}, cb
+
+  # Create a server-side log entry for types: AUDIT/DEBUG/ERROR/EMERGENCY
+  # Requires a scriptId and recordType (for example if a script with id 3
+  # runs during sales order creation, sId = 3, recType = 'salesorder')
+  logExecution: (scriptId, recordType, type, title, details, cb) ->
+    @jsonr 'logExecution', [scriptId, recordType, type, title, details ? null], {}, cb
+
+  # Create a new nlobjError entry server-side
+  logError: (code, msg, id, fn, scriptId, notify, recordType, recordId, cb) ->
+    @jsonr 'logError', [code, msg, id, fn, scriptId, not notify, suppressNotification, recordType, recordId], {}, cb
 
  #----------------------------------------------------------
- # Standard NLAPI (NSXML) Requests - Older API methods
+ # Standard NLAPI (NSXML) Requests - Older API methods for record management and 
+ # some misc. functions, such as sendEmail/sendFax and requestURL
  #----------------------------------------------------------
 
   # Save some space by reusing common nlapi...Record code
@@ -540,13 +602,13 @@ class NsRecord
   # TODO: Finish sublist reverse engineering / testing
   # Inserts a blank line item at a given line # for sublist type
   insertLineItem: (type, line) ->
-    @lineitems[type] ?= []
-    @lineitems.splice line, 0, []
+    @lineItems[type] ?= []
+    @lineItems.splice line, 0, []
     @logOperation 'insertLineItem', { type }
 
   # Splice out a line item for sublist type / line #
   removeLineItem: (type, line) ->
-    @lineitems[type]?.splice line, 1
+    @lineItems[type]?.splice line, 1
     @logOperation 'removeLineItem', { type }
 
   # Log line item selection + initialize new current properties
@@ -562,6 +624,17 @@ class NsRecord
     @currentLineItems[type] = {}
     @currentLineIndexes[type] = @lineItems[type].length + 1
     @logOperation 'selectNewLineItem', { type }
+
+  commitLineItem: (type) ->
+    line = @currentLineItemIndexes[type] 
+    (@lineItems[type][line][key] = value) for key, value of @currentLineItems[type]
+    @logOperation 'commitLineItem', { type }
+
+  # Remove new line item before commitment or reverse edit in progress
+  cancelLineItem: (type) ->
+    @currentLineItems[type] = null
+    @currentLineItemIndexes[type] = null
+    @logOperation 'cancelLineItem', { type }
 
   # Set matrix value operation
   setMatrixValue: (type, field, column, value) ->
@@ -600,36 +673,58 @@ class QuickSummary
   getVisibleFields: ->
     fld for i, fld of @fields when fld.display is 'visible'
 
+class NsSearch
+  constructor: (@type, @searchId, @filters, @columns) ->
+    @isPublic = false
+    @scriptId = null
 
-class SearchFilter 
-  constructor: (@name, @join, @operator, @values..., options) ->
-    @formula = options.formula ? null
-    @summarytype = options.summarytype ? null
-    @isor = options.isor ? false
-    @isnot = options.isnot ? false
-    @leftparens = 0
-    @rightparens = 0
+  extract: (result) ->
+    @searchId = result.searchId ? -1
+    @isPublic = result.ispublic ? false
+    @scriptId = result.scriptid ? null
+    @filters = (new NsSearchFilter(result["filter#{i}"]) for i in [0...result.filtercount])   
+    @columns = (new NsSearchColumn(result["column#{i}"]) for i in [0...result.columncount])
+    return @
+
+class NsSearchFilter 
+  constructor: (@name, @join=null, @operator=null, @values..., options) ->
+    if arguments.length is 1
+      obj = arguments[0]
+      for k,v in obj
+        @[k] = v
+    else
+      @formula = options.formula ? null
+      @summarytype = options.summarytype ? null
+      @isor = options.isor ? false
+      @isnot = options.isnot ? false
+      @leftparens = options.leftparens ? 0
+      @rightparens = options.rightparens ? 0
     return @
 
   addValue: (values...) ->
     @values = @values.concat values
     return @
 
-class SearchColumn 
-  constructor: (@name, @join, @summary, options={}) ->
-    @type = options.type ? null
-    @label = options.label ? null
-    @sortdir = options.sortdir ? null
-    @index = options.index ? -1
-    @functionid = options.functionid ? null
-    @formula = options.formula ? null
-    @userindex = options.userindex ? -1
-    @whenorderedby = options.whenorderedby ? null
-    @whenorderedbyjoin = options.whenorderedbyjoin ? null
+class NsSearchColumn 
+  constructor: (@name, @join=null, @summary=null, options={}) ->
+    if arguments.length is 1
+      obj = arguments[0]
+      for k,v in obj
+        @[k] = v
+    else 
+      @type = options.type ? null
+      @label = options.label ? null
+      @sortdir = options.sortdir ? null
+      @index = options.index ? -1
+      @functionid = options.functionid ? null
+      @formula = options.formula ? null
+      @userindex = options.userindex ? -1
+      @whenorderedby = options.whenorderedby ? null
+      @whenorderedbyjoin = options.whenorderedbyjoin ? null
     return @
 
 # Wraps the results of a global search to provide helperss
-class SearchResults 
+class NsSearchResults 
   constructor: (result={}) ->
     @columns = result.columns ? []
     @rows = result.rows ? []
@@ -711,7 +806,6 @@ class ExportedCSV extends FileDownload
 module.exports = 
   Client: NsUiClient 
   Session: NsUiSession
-  Search:
-    Results: SearchResults
-    Column: SearchColumn 
-    Filter: SearchFilter
+  SearchResults: NsSearchResults
+  SearchColumn: NsSearchColumn 
+  SearchFilter: NsSearchFilter

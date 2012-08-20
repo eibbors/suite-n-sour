@@ -36,3 +36,8 @@ n$.login cfg.email, cfg.password, (res) ->
   
   # n$.requestURL 'GET', 'http://www.whatismyip.com', {}, {}, {}, dump
   # 167.216.131.254 -> no host name
+
+  # n$.searchGlobal 'search', dump
+  n$.loadSearch 'customer', 7, dump
+
+
