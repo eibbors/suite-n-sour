@@ -50,6 +50,9 @@ renderXML = (obj) ->
                 else pload += " #{ak}=\"#{av}\""
             else pload += " #{value['@']}"
             delete value['@']
+            if value['=']
+              pload += ">#{value['=']}</#{key}>"
+              continue
           if value.constructor is 'Date' # append GMTString for date
             pload += ">#{value.toGMTString()}</#{key}>"
           else # render the object's properties recursively
@@ -66,7 +69,7 @@ renderXML = (obj) ->
 escapeXML = (str) ->
   str.replace(/&/g, '&amp;')
      .replace(/</g, '&lt;')
-     .replace(/>/g, '&gt;')
+     .replace(//>g, '&gt;')
      .replace(/"/g, '&quot;')
      .replace(/'/g, '&apos;')
 
@@ -80,16 +83,58 @@ cdata = (value, escape=true) ->
       value = "<![CDATA[#{value}]]>"
   value
 
-# Under construction, but will eventually be used to model more "complex" XML structures by
-# introducing some extra formality
-class Element
-  constructor: (@name, options) ->
-    if typeof options is 'object'
-      @attributes = options.attributes ? options['@'] ? {}
-      @value = options.value ? undefined
-      @type = options.type ? null
-    else if options
-      @value = options
+# Uber simple function to parse 'xmlns:tagname' into name/ns 
+qname = (n, tns) ->
+  [ns..., name] = n.split(':')
+  {ns: ns.join('') or tns ? null, name}
+
+# Felt like I was reinventing the wheel again with this class, but I could not
+# locate a CoffeeScript or JS module that would work with NetSuite's SOAP webservices
+# Anyway, this is a more formal way of modeling XML elements than plain JSON, which
+# is a necessity when working with NS's webservices
+class SimpleType
+  constructor: (@name='', options) ->
+    @attributes = options.attributes ? {}
+    @minOccurs = options.minOccurs ? 1
+    @maxOccurs = options.maxOccurs ? 1
+    @value ?= options.value ? options.default ? undefined
+
+  # This should be overridden by subclasses
+  isValid: -> 
+    if @minOccurs > 0 and @value is undefined
+      return false
+    else 
+      return true
+
+  # Set the value...? Maybe?
+  setValue: (val) -> @value = val
+  # Set one of the attribute values (or create a new one)
+  setAttr: (key, val) -> @attributes[key] = val
+
+  # Chainable method that can be used to set the value, ie: @set('example').set('value', 15)
+  # set the attr obj, @set('@', {type: 'gangsta', streetname: 'dj fruitloop'})
+  # or set a single attr, @set('@attrkey1', '<3-2-69').set('@sick', true)
+  set: (key, val) ->
+    if arguments.length is 1 then @setValue key
+    else if key is '=' or key is 'value' then @setValue val
+    else if key is '@' then @attributes = val
+    else if key.indexOf('@') is 0 then @setAttr key[1..], val
+    return @
+
+  # XML object that can be rendered using this module's renderXML function
+  toXML: -> 
+    obj = {}
+    obj[@name] = { '@': @attributes, '=': @value }
+
+  # Note that this is refering to XML strings now
+  toString: ->
+    attrs = ' '+("#{k}=\"#{v}\"" for k,v of @attributes).join(' ')
+    switch @value
+      when undefined then "<#{@name}#{attrs}/>"
+      when null then "<#{@name}#{attrs}></#{@name}>"
+      else "<#{@name}#{attrs}>#{@value.toString()}</#{@name}>"
+
+
 
 # Export all of the juicy goodness
 module.exports =
@@ -98,3 +143,5 @@ module.exports =
   verify: verifyXML
   escape: escapeXML
   cdata: cdata
+  qname: qname
+  SimpleType: SimpleType
