@@ -24,8 +24,8 @@ class NsDebugClient extends ui.Client
     dr.nsDebugRequest['@'] = { operation }
     if options.dsid is true # session requests
       dr.nsDebugRequest['@'].debugsessionid = @debugger.sessionId
-      elements.url ?= @debugger.source?.url ? 'debugger$debugger.user'
-      elements.sourceid ?= @debugger.source?.sourceid ? -1
+      elements.url ?= @debugger.source.url ? 'debugger$debugger.user'
+      elements.sourceid ?= @debugger.source.sourceid ? -1
       (elements.frame ?= @debugger.frame ? 0) unless options.cf is false
     else if options.dsid?
       dr.nsDebugRequest['@'].debugsessionid = options.dsid
