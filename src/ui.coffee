@@ -6,12 +6,7 @@ rpc = require './rpc'
 qs = require 'querystring'
 fs = require 'fs'
 
-<<<<<<< HEAD
-# She's a monster of a class, but considering the size of the NetSuite api, it's unavoidable
-# It beats 20-30+ JavaScript files polluting the global context with hundreds of NLxxx's 
-=======
 # She's a monster of a class, but considering the size of the NetSuite api, that's unavoidable 
->>>>>>> SOAP implementation under construction, bug fixes
 class NsUiClient extends rpc.Client
 
   constructor: (options={}) ->
@@ -24,10 +19,6 @@ class NsUiClient extends rpc.Client
     nr = { nlapiRequest: elements }
     @xmlr options.path ? undefined,  nr, (res) ->
       if res.statusCode is 200
-<<<<<<< HEAD
-        console.log res.body
-=======
->>>>>>> SOAP implementation under construction, bug fixes
         res.parseBody 'xml', (parsed) ->
           cb parsed, res
       else cb null, res
@@ -266,11 +257,7 @@ class NsUiClient extends rpc.Client
   # Detach a record from one another (first type/id is for attached record)
   # TODO: find options param information
   detachRecord: (type, id, parentType, parentId, options, cb) ->
-<<<<<<< HEAD
-    @jsonr 'attachRecord', [srcType, srcId, destType, destId, options ? {}], {}, cb
-=======
     @jsonr 'detachRecord', [srcType, srcId, parentType, parentId, options ? {}], {}, cb
->>>>>>> SOAP implementation under construction, bug fixes
 
   # Create a server-side log entry for types: AUDIT/DEBUG/ERROR/EMERGENCY
   # Requires a scriptId and recordType (for example if a script with id 3
@@ -344,11 +331,7 @@ class NsUiClient extends rpc.Client
       id: id
       enableSourcing: options.enableSourcing ? false
       disableTriggers: options.disableTriggers ? false
-<<<<<<< HEAD
-    el = {field: {name: k, value: v}} for k,v of fields
-=======
     el = ({field: {name: k, value: v}} for k,v of fields)
->>>>>>> SOAP implementation under construction, bug fixes
     @nlapir attr, el, {}, cb
 
   # nlapiSendEmail request - sends... drumroll please...AN EMAIL!
@@ -425,27 +408,16 @@ class NsUiClient extends rpc.Client
   # When pdf is supported, will export pdf, otherwise exports html (without NL bullshit)
   exportPDF: (path, options={}, cb) ->
     options.pdf = 'T'
-<<<<<<< HEAD
-    @export path, options, (res) ->
-      if res.statusCode is 200
-        cb new FileDownload(res, path), res
-      else cb null, res
-=======
     @export path, options, cb
->>>>>>> SOAP implementation under construction, bug fixes
 
   # Any .nl result page that supports csv exporting should work with this function
   exportCSV: (path, options={}, cb) ->
     path = path.replace(/\.nl(\?[^/]+)?$/, '.csv')
     options.csv = 'Export'
     @export path, options, (res) ->
-<<<<<<< HEAD
-      if res.statusCode is 200 then cb new ExportedCSV(res), res
-=======
       if res.statusCode is 200
         res.parseBody 'csv', (parsed) ->
           cb parsed, res
->>>>>>> SOAP implementation under construction, bug fixes
       else cb null, res
 
   # OfficeXML (excel file) export
@@ -453,13 +425,7 @@ class NsUiClient extends rpc.Client
     path = path.replace(/\.nl(\?[^/]+)?$/, '.xls')
     options.OfficeXML = 'T'
     options.csv = 'Export'
-<<<<<<< HEAD
-    @export path, options, (res) ->
-      if res.statusCode is 200 then cb new FileDownload(res), res
-      else cb null, res
-=======
     @export path, options, cb
->>>>>>> SOAP implementation under construction, bug fixes
 
  #----------------------------------------------------------
  # Various media/template calls
@@ -703,19 +669,12 @@ class QuickSummary
     fld for i, fld of @fields when fld.display is 'visible'
 
 class NsSearch
-<<<<<<< HEAD
-  constructor: (@type, @searchId, @filters, @columns) ->
-    @isPublic = false
-    @scriptId = null
-
-=======
   constructor: (@type, @searchId, @filters=[], @columns=[]) ->
     @isPublic = false
     @scriptId = null
     return @
 
   # Extract and initialize properties from api call result
->>>>>>> SOAP implementation under construction, bug fixes
   extract: (result) ->
     @searchId = result.searchId ? -1
     @isPublic = result.ispublic ? false
@@ -724,8 +683,6 @@ class NsSearch
     @columns = (new NsSearchColumn(result["column#{i}"]) for i in [0...result.columncount])
     return @
 
-<<<<<<< HEAD
-=======
   fltr: (nameOrObj, extras...) ->
     @filters ?= []
     if typeof nameOrObj is 'object'
@@ -734,7 +691,6 @@ class NsSearch
     else 
       filters.push new NsSearchFilter.apply(arguments)
 
->>>>>>> SOAP implementation under construction, bug fixes
 class NsSearchFilter 
   constructor: (@name, @join=null, @operator=null, @values..., options) ->
     if arguments.length is 1
@@ -803,7 +759,6 @@ class NsSearchResults
       table.push tr
     table
 
-<<<<<<< HEAD
 # Basic inline file utility class
 # TODO: Build this into rpc.Response, along with CSV parsing(maybe?)
 class FileDownload
@@ -852,8 +807,6 @@ class ExportedCSV extends FileDownload
           row = line.split(',') # fallback on immature row parse, if need be
         @rows.push row
 
-=======
->>>>>>> SOAP implementation under construction, bug fixes
 # Expose public functions
 module.exports = 
   Client: NsUiClient 
