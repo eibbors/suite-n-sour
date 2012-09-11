@@ -29,6 +29,7 @@ SS_DUMP_ENV =
     confirm(src);
     confirm(srcfile);
 """
+
 # login with the details stored in ./cfg.coffee
 # ... Identical to standard UI client login except for the host
 n$ = new snsour.debug.Client(host: 'debugger.na1.beta.netsuite.com')

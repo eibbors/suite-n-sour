@@ -31,5 +31,3 @@ n$.login cfg.email, cfg.password, (res) ->
   # n$.createRecord 'salesorder', null, (a, b) ->
   #   console.log JSON.stringify(a)
   #   console.log b
-
-  # n$.sendEmail -5, 'r@eibbors.com', 'hola', 'senor roberto', null, null,{}, console.log

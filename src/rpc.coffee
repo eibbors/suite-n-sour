@@ -8,9 +8,10 @@ zlib = require 'zlib'
 xml = require './xml'
 {EventEmitter} = require 'events'
 
-# Default handlers
+# Default handlers for invoking nlapi calls
 JSONR_HANDLER = '/app/common/scripting/nlapijsonhandler.nl'
 XMLR_HANDLER = '/app/common/scripting/nlapihandler.nl'
+SUCCESSFUL_STATUS_CODES = [200, 206, 302]
 
 # Provides convenient ways of calling different RPC handlers and should be extended
 # with specialized requests in sub modules
@@ -62,10 +63,10 @@ class NsRpcClient extends EventEmitter
       # update our cookie jar
       for name,value of res.parseCookies()
         @cookies[name] = value
+    # Emits the request details attached to 'request' event
     @emit 'request', rid, req, options
     if body then req.write(body)
     req.end()
-    @emit 'request', rid, req
     { request: req, id: rid }
 
   # Convenience method for simple GET requests
@@ -88,7 +89,7 @@ class NsRpcClient extends EventEmitter
         'content-type': 'application/x-www-form-urlencoded; charset=utf-8'
     @post path, options, cb
  
-  # Emulates NetSuite's JSON RPC requests, found all over the official NLAPI modules 
+  # Emulates NetSuite's JSON RPC requests, their newer nlapi call schema 
   jsonr: (jrmethod, jrparams, options={}, cb) =>
     rid = ++@requestId
     path = options.path ? JSONR_HANDLER
@@ -107,6 +108,8 @@ class NsRpcClient extends EventEmitter
       @request 'GET', path, { rid, query }, (response) =>
         response.parseBody options.parser ? 'json', cb
 
+  # Support for older xml based api calls, nlapiRequest, nsDebugRequest, etc.
+  # Will render (build) the xml document from payload objects or do nothing for primitives
   xmlr: (path, payload, cb) ->
     if typeof payload is 'object'
       body = xml.render(payload)
@@ -129,12 +132,22 @@ class NsRpcResponse
       @body += data
     response.on 'end', =>
       @decodeBody =>
-        @parseErrors =>
+        @checkForErrors =>
           callback @
 
-  # Decode response body (NetSuite may gzip some responses)
+  # Decode response body / parse content headers (NetSuite may gzip some responses)
   decodeBody: (cb) ->
-    if @headers['content-encoding']? in ['gzip', 'deflate']
+    # Should look into mime type library in the future (parses content type)
+    ctype = /(\S+)\/(\S+); charset=(\S+)/i.exec(@headers['content-type'] ? '')
+    if ctype then @content = {type: ctype[1], format: ctype[2], charset: ctype[3]}
+    else @content = {}
+    # Snag the filename, should there be a content-disposition field
+    cdispo = /inline;filename="(.*)"/i.exec(@headers['content-disposition'] ? '')
+    if cdispo then @content.filename = cdispo[1] 
+    # Finally do the dirty and take care of any compression
+    @content.encoding = @headers['content-encoding'] ? null
+    # Decode content based on encoding
+    if @encoding in ['gzip', 'deflate']
       zlib.unzip @body, (parsed) =>
         @raw = @body
         @body = parsed 
@@ -152,7 +165,7 @@ class NsRpcResponse
     return @cookies = cookies
 
   # Intermediate step in order to test for NetSuite errors
-  parseErrors: (cb) ->
+  checkForErrors: (cb) ->
     if /<onlineError>/.test @body # XML error found
       @parseBody 'xml', (error, raw) =>
         @error = error
@@ -179,12 +192,36 @@ class NsRpcResponse
             if err then return cb false, @body, err
             else 
               @parsed = parsed
-              return cb @parsed, @body
-      when 'guess'
+              cb @parsed, @body
+      when 'csv'
+        @parsed = { lines: [], columns: [], rows: [] }        
+        trimmed = @body.replace(/^\s\s*/, '').replace(/\s\s*$/, '')
+        @parsed.lines = trimmed.split(/\n\n*/)
+        @parsed.columns = @parsed.lines[0]?.split(',')
+        rexparts = new Array(@parsed.columns.length).join(',([^,]+|"[^"]+")')
+        csvrex = new RegExp("^([^,]+|\"[^\"]+\")#{rexparts}$")
+        @parsed.rows = []
+        for line in @parsed.lines
+          r = csvrex.exec(line) or line.split(',')
+          row = {}
+          for i,c of @parsed.columns
+            row[c] = r[Number(i)+1] ? null
+          @parsed.rows.push row
+        cb @parsed, @body
+      else
         if /^\s*(\{|\[)/.test @body 
           @parseBody 'json', cb
         else if xml.verify @body, true
           @parseBody 'xml', cb
+
+  # Save request body 
+  saveFile: (filename, cb) ->
+    filename ?= @content.filename ? "#{@requestId}.log"
+    if typeof cb is 'function'
+      fs.writeFile filename, @body, @content.charset ? 'utf-8', cb
+    else
+      fs.writeFileSync filename, @body, @content.charset ? 'utf-8'
+
 
 # Expose public classes
 module.exports = 
