@@ -1,12 +1,9 @@
 {
   "name": "suite-n-sour.js",
-<<<<<<< HEAD
   "version": "0.0.9",
   "description": "NetSuite for Node.js! Implments User Interface, SuiteScript Debugger, Offline Client, Web Store, and SOAP API's with more on the way!",
-=======
   "version": "0.0.4",
   "description": "SOAP-FREE NetSuite for Node.js! Runs on the same internal api calls that the online user interface does for speed, simplicity, and sexiness!",
->>>>>>> bbe784c9ebcb9ced6830dc121fa28fcc24899f2f
   "main": "index.js",
   "dependencies" : {
     "xml2js" : ">=0.1.13"
