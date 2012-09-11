@@ -33,6 +33,3 @@ n$.login cfg.email, cfg.password, (res) ->
   #   console.log b
 
   # n$.sendEmail -5, 'r@eibbors.com', 'hola', 'senor roberto', null, null,{}, console.log
-  
-  # n$.requestURL 'GET', 'http://www.whatismyip.com', {}, {}, {}, dump
-  # 167.216.131.254 -> no host name

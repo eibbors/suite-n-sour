@@ -16,6 +16,9 @@
 // Require each submodule (to reduce overhead, load individual files from lib or src)
 var n$ = {
 	debug: require('./lib/debug'),
+  offline: require('./lib/offline'),
+  webstore: require('./lib/webstore'),
+  // soap: require('./lib/soap') - under construction
 	ui: require('./lib/ui')
 };
 
