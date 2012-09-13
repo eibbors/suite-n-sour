@@ -1,10 +1,24 @@
-# (net)Suite-n-SOUR.js 
+# Suite-n-Sour
 
-  NetSuite for Node.js! Instead of being based on their SuiteTalk web services, I have based it off the requests made by their online user interface. It's faster, believe it or not simpler, and built from the ground up for greater continuity. Eventually a SuiteTalk implementation will be included, but for now enjoy SuiteScripting with a twist!
+  NetSuite SOAP, Web Store, Offline Client, User Interface, and XML/JSON RPC automation for Node.js.
+
+ [![Suite-n-Sour](http://eibbors.com/img/snsour.png)](http://github.com/eibbors/suite-n-sour)
+
+   Blow your SuiteScript benchmarks to kingdom come with SnSour's multi-protocol approach!
+
+## Installation
+
+    $ npm install suite-n-sour
+
+  The easiest way is to install her with npm, but you can of course also clone this repository:
+
+    $ git clone https://github.com/eibbor/suite-n-sour.git
 
 ## Usage
 
-  In a few days I will have some really cool examples, but here's the basic idea:
+  Each protocol/context has its own namespace within the suite-n-sour index.js file. See the tests folder 
+  for some more sample code and I've tried to heavily comment the CoffeeScript src files, which is the quickest
+  way to see how everything ticks.
 
 ```coffeescript
 snsour = require 'suite-n-sour'
@@ -16,7 +30,6 @@ nsui.login 'your@email.com', 'yourpassword', (res) ->
   nsui.searchGlobal 'asdf', console.log
   # See the src/ui.coffee file for available functions
 ```
-  The debugger module is fairly complete, repl example under construction:
 
 ```javascript
 nsdbg = require('suite-n-sour').debug;
@@ -26,7 +39,7 @@ nd.loginAs('your@email.com', 'yourpassword', 'yourcompanyid', 3 /*role*/, functi
   nd.runScript('var r = nlapiGetContext(); confirm(c); confirm(this.__proto__.toSource());', console.log);
 });
 ```
-  Check the repository frequently as I will be updating tons of stuff daily.
+  I am swamped with stuff right now so any help with documentation, bug fixes, etc. is much appreciated!
 
 ## License
 

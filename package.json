@@ -1,9 +1,14 @@
 {
   "name": "suite-n-sour.js",
-  "version": "0.0.9",
+  "version": "0.0.11",
+  "author": {
+    "name": "Robbie Saunders",
+    "email": "r@eibbors.com",
+    "url": "http://eibbors.com"]
+   },
   "description": "NetSuite for Node.js! Implments User Interface, SuiteScript Debugger, Offline Client, Web Store, and SOAP API's with more on the way!",
   "version": "0.0.4",
-  "description": "SOAP-FREE NetSuite for Node.js! Runs on the same internal api calls that the online user interface does for speed, simplicity, and sexiness!",
+  "description": "CoffeeScript / Node.js libraries for NetSuite automation. Take SuiteScripting to a whole new level of speed, flexibility, and portablity with Suite'n'Sour! Take better advantage of NetSuite's diverse API offerings, including [S]uiteTalk & Shopping API's, [O]ffline Client, Standard [U]ser Interface API, and general JSON and XML [R]PC support!",
   "main": "index.js",
   "dependencies" : {
     "xml2js" : ">=0.1.13"
@@ -24,6 +29,5 @@
     "CRM",
     "integration"
   ],
-  "author": "Robbie Saunders (aka eibbors)",
   "license": "GPLv3 with proprietary licensing available"
 }
