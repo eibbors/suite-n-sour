@@ -3,7 +3,6 @@
 # Usage shipping = require('./ui/shipping').extend(Client)
 xml = require '../xml'
 
-
 # Generate XML structure for ItemShipRequest
 ItemShipRequest = (shipMethod) ->
   ItemShipRequest:
@@ -208,7 +207,7 @@ exports.extend = (client) ->
       path:  '/app/common/shipping/dynshiptaxitem.nl'
     @jsonr 'getTaxItem', [payload], opts, cb
 
-
+  # Return model classes, helpers, etc.
   return {
     RatesRequest: RatesRequest
     Package: ShipPackage

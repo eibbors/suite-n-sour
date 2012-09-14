@@ -6,9 +6,9 @@ rpc = require './rpc'
 qs = require 'querystring'
 fs = require 'fs'
 
-
-# Submodule client extensions and helpers
+# Submodule 'mixins' to cut down on clutter
 shipping = require('./ui/shipping')
+search = require('./ui/search')
 
 # She's a monster of a class, but considering the size of the NetSuite api, that's unavoidable 
 class NsUiClient extends rpc.Client
@@ -178,70 +178,6 @@ class NsUiClient extends rpc.Client
     dateStr = "#{effectDate.getMonth() + 1}/#{effectDate.getDate()}/#{effectDate.getFullYear()}"
     @jsonr 'exchangeRate', [fromCurrency, toCurrency, dateStr], {}, cb
 
-  # Execute a global keyword search and return NsSearchResults object
-  searchGlobal: (keywords, cb) ->
-    @jsonr 'searchGlobal', [keywords], {}, (res) ->
-      cb new NsSearchResults(res?.result), res
-
-  # Perform a duplicate record search for (record) type by fields object or search id
-  searchDuplicate: (type, fields, id, cb) ->
-    if isNaN(id) then id = -1
-    # fields = psuedoHashMap(fields)
-    @jsonr 'searchDuplicate', [type, id, fields], {}, cb
-
-  # Get the set of possible search columns for a particular record type
-  getSearchColumns: (type, filter, op, cb) ->
-    @jsonr 'getSearchColumns', [type, filter, op], {}, (res) ->
-      cb res.result, res
-
-  # Fetch filter expressions given search filter objects in either format:
-  buildSearchFilterExpression: (filters..., cb) ->
-    filterSet = []
-    for filter in filters
-      if Array.isArray filter then filterSet = filterSet.concat(filter)
-      else filterSet.push filter
-    @jsonr 'buildSearchFilterExpression', [filterSet], {method: 'POST'}, cb
-
-  # Not really sure what good this is for...
-  # TODO: investigate usage
-  parseSearchFilterExpression: (filterExpression, cb) ->
-    @jsonr 'parseSearchFilterExpression', [filterExpression], {method: 'POST'}, cb
-
-  # Execute a search for a certain record type
-  searchRecord: (type, id, filters=[], columns=[], cb) ->
-    if not Array.isArray filters then filters = [filters]
-    if not Array.isArray columns then columns = [columns]
-    @jsonr 'searchRecord', [type, id, filters, columns], {method: 'POST'}, (res) ->
-      cb new NsSearchResults(res?.result), res
-
-  # Load existing marshalled nlobjSearch properties from server 
-  loadSearch: (type, searchId, cb) ->
-    @jsonr 'loadSearch', [type, searchId], {}, (res) ->
-      s = new NsSearch(type, searchId, [], []).extract(res.result)
-      cb s, res
-
-  # Attempts to save full blown searches, will fail for ADHOC searchinga
-  saveSearch: (title, search, cb) ->
-    args = [title, search.scriptId, search.type, search.searchId, 
-             search.filters, search.columns, search.isPublic]
-    @jsonr 'saveSearch', args, {}, cb
-
-  # Delete an existing search for recordtype/searchid
-  deleteSearch: (type, searchId, cb) ->
-    @jsonr 'deleteSearch', [type, searchId], {}, cb
-
-  # Request search page (data used to generate search forms
-  prepareSearchPage: (type, searchId, filters=[], columns=[], cb) ->
-    @jsonr 'prepareSearchPage', [type, searchId, filters, columns], {}, cb
-
-  # Requst results of provided search
-  prepareSearchResults: (type, searchId, filters=[], columns=[], cb) ->
-    @jsonr 'prepareSearchResults', [type, searchId, filters, columns], {}, cb
-
-  # Retrieve subset of provided search's results (like Array.slice function)
-  searchRecordSlice: (type, searchId, filters=[], columns=[], start, end, cb) ->
-    @jsonr 'searchRecordSlice', [type, searchId, filters, columns, start, end], {}, cb
-
   # Fetch the URL of a NS resource TASKLINK/RECORD/SUITELET 
   resolveURL: (type, identifier, id, pagemode, cb) ->
     switch type.toLowerCase()
@@ -282,11 +218,11 @@ class NsUiClient extends rpc.Client
   _nlapiRecReq: (attr, params, cb) ->
     if params then el = { loadParams: params } else el = {}
     @nlapir attr, el, {}, (parsed, res) =>
-      if parsed then cb new NsRecord().extract(res.parsed), res
+      if parsed then cb new NsUiRecord().extract(res.parsed), res
       else cb parsed, res
 
   # nlapiCreateRecord request - instantiates a record object with the values of initDefaults
-  # filled in already. See NsRecord class for more information 
+  # filled in already. See NsUiRecord class for more information 
   createRecord: (recordType, initializeDefaults, cb) ->
     attr = { type: 'nlapiCreateRecord', recordType }
     @_nlapiRecReq attr, initializeDefaults, (rec, res) ->
@@ -314,7 +250,7 @@ class NsUiClient extends rpc.Client
       if rec then rec.logOperation 'transformRecord', { type: recordType, id, transformType, transformDefaults }
       cb rec, res
 
-  # nlapiSubmitRecord request - commit changes (operations) from NsRecord (or custom) object
+  # nlapiSubmitRecord request - commit changes (operations) from NsUiRecord (or custom) object
   # optional boolean properties: enableSourcing, disableTriggers, ignoreMandatoryFields
   submitRecord: (record, options, cb) ->
     attr = 
@@ -522,7 +458,7 @@ class NsUiSession
       @stickyTags[taskId]
 
 # Abstract class for modeling netsuite records
-class NsRecord
+class NsUiRecord
   constructor: (@recordType=null, @id=null) ->
     @fields = {}
     @fieldNames = []
@@ -672,150 +608,13 @@ class QuickSummary
   getVisibleFields: ->
     fld for i, fld of @fields when fld.display is 'visible'
 
-class NsSearch
-  constructor: (@type, @searchId, @filters=[], @columns=[]) ->
-    @isPublic = false
-    @scriptId = null
-    return @
-
-  # Extract and initialize properties from api call result
-  extract: (result) ->
-    @searchId = result.searchId ? -1
-    @isPublic = result.ispublic ? false
-    @scriptId = result.scriptid ? null
-    @filters = (new NsSearchFilter(result["filter#{i}"]) for i in [0...result.filtercount])   
-    @columns = (new NsSearchColumn(result["column#{i}"]) for i in [0...result.columncount])
-    return @
-
-  fltr: (nameOrObj, extras...) ->
-    @filters ?= []
-    if typeof nameOrObj is 'object'
-      for obj in [nameOrObj].concat(extras)
-        @filters.push new NsSearchFilter(obj)
-    else 
-      filters.push new NsSearchFilter.apply(arguments)
-
-class NsSearchFilter 
-  constructor: (@name, @join=null, @operator=null, @values..., options) ->
-    if arguments.length is 1
-      obj = arguments[0]
-      for k,v in obj
-        @[k] = v
-    else
-      @formula = options.formula ? null
-      @summarytype = options.summarytype ? null
-      @isor = options.isor ? false
-      @isnot = options.isnot ? false
-      @leftparens = options.leftparens ? 0
-      @rightparens = options.rightparens ? 0
-    return @
-
-  addValue: (values...) ->
-    @values = @values.concat values
-    return @
-
-class NsSearchColumn 
-  constructor: (@name, @join=null, @summary=null, options={}) ->
-    if arguments.length is 1
-      obj = arguments[0]
-      for k,v in obj
-        @[k] = v
-    else 
-      @type = options.type ? null
-      @label = options.label ? null
-      @sortdir = options.sortdir ? null
-      @index = options.index ? -1
-      @functionid = options.functionid ? null
-      @formula = options.formula ? null
-      @userindex = options.userindex ? -1
-      @whenorderedby = options.whenorderedby ? null
-      @whenorderedbyjoin = options.whenorderedbyjoin ? null
-    return @
-
-# Wraps the results of a global search to provide helperss
-class NsSearchResults 
-  constructor: (result={}) ->
-    @columns = result.columns ? []
-    @rows = result.rows ? []
-
-  # Returns rows as standard objects, improving user friendliness
-  getRowObjects: ->
-    for row in @rows
-      obj = 
-        id: row.id
-        recordType: row.recordType
-      for cell in row.cells 
-        obj[cell.name] = cell.value
-      obj
-
-  # Returns an array (=rows) of arrays (=cells)
-  # First row will include column titles unless you pass false
-  buildArray: (inclHeader=true) ->
-    table = []
-    if inclHeader 
-      table.push []
-      for col in @columns
-        table[0][col.index - 1] = col.name
-    for row in @rows
-      tr = []
-      for cell in row.cells
-        tr[cell.index - 1] = cell.value
-      table.push tr
-    table
-
-# Basic inline file utility class
-# TODO: Build this into rpc.Response, along with CSV parsing(maybe?)
-class FileDownload
-  constructor: (response={}, path) ->
-    ctype = /(\S+)\/(\S+); charset=(\S+)/i.exec(response.headers?['content-type'] ? '')
-    if ctype 
-      @type = ctype[1]
-      @format = ctype[2]
-      @encoding = ctype[3]
-    cdispo = /inline;filename="(.*)"/i.exec(response.headers?['content-disposition'] ? '')
-    if cdispo then @filename = cdispo[1] 
-    else 
-      rfile = /\b(\w+\.\w+)(\?[^\/]+)?$/i.exec(path ? "./response.#{response.requestId}")
-      if rfile then @filename = "#{response.requestId}.#{rfile[1]}.#{@format ? 'log'}"
-      else @filename = "#{response.requestId}.log"
-    @raw = response.body
-
-  # Save the raw file data, both sync and async supported
-  save: (filename, cb) ->
-    if typeof cb is 'function'
-      fs.writeFile filename, @raw, @encoding ? 'utf-8', cb
-    else
-      fs.writeFileSync filename, @raw, @encoding ? 'utf-8'
-
-# Utility class for working with NetSuite's CSV exports
-class ExportedCSV extends FileDownload
-  constructor: (response={}) ->
-    super
-    if @raw
-      # trim leading and trailing whitespace, ignore blank lines
-      trimmed = @raw.replace(/^\s\s*/, '').replace(/\s\s*$/, '')
-      @lines = trimmed.split(/\n\n*/)
-      # assume NS will format the columns without any extra commas for now
-      @columns = @lines[0]?.split(',')
-      # TODO: double, nay quintuple, check this won't break 
-      rexparts = new Array(@columns.length).join(',([^,]+|"[^"]+")')
-      csvrex = new RegExp("^([^,]+|\"[^\"]+\")#{rexparts}$")
-      @rows = []
-      for line in @lines
-        r = csvrex.exec line
-        if r
-          row = {}
-          for i,c of @columns
-            row[c] = r[Number(i)+1]
-        else 
-          row = line.split(',') # fallback on immature row parse, if need be
-        @rows.push row
 
 # Expose public functions
 module.exports = 
+  # Implement mixins for ui client
   shipping: shipping.extend(NsUiClient)
+  search: search.extend(NsUiClient)
+  # Local types
   Client: NsUiClient 
   Session: NsUiSession
-  SearchResults: NsSearchResults
-  SearchColumn: NsSearchColumn 
-  SearchFilter: NsSearchFilter
+  Record: NsUiRecord

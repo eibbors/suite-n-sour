@@ -180,14 +180,14 @@ class NsRpcResponse
 
   # Parse custom headers NetSuite provides for tracing/debugging/support cases
   parseNsHeaders: (cb) ->
-    # Request Timer composite field -> internal request timestamp/server/port
+    # SOLR Rtimer field identifying the request thread, serverId, port request was routed to
     if @headers['ns_rtimer_composite']?
       [rtime, server, srvPort] = @headers['ns_rtimer_composite'].split(':')
       srvstr = ''
       for i in [0...server.length] by 2
         srvstr += String.fromCharCode(parseInt(server.substr(i,2), 16))
-      @nsReqTimer =
-        rtime: rtime
+      @rtimer =
+        threadId: rtime
         serverId: srvstr
         port: srvPort
     if typeof cb is 'function' then cb @
