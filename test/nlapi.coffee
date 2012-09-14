@@ -12,6 +12,10 @@ n$ = new snsour.ui.Client(host: 'system2.netsuite.com')
 n$.on 'error', console.error
 n$.login cfg.email, cfg.password, (res) ->
   
+  n$.getItemShipInfo '4', dump
+
+  # dump res
+
   ## Uncomment out one of the samples below or uncomment all for mass testing
 
   # n$.getTotalScriptGovernance -1, console.log

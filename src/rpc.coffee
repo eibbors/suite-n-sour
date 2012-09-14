@@ -127,6 +127,7 @@ class NsRpcResponse
   constructor: (response, @requestId, callback) ->
     @statusCode = response.statusCode
     @headers = response.headers
+    @parseNsHeaders()
     @body = ''
     response.on 'data', (data) =>
       @body += data
@@ -176,6 +177,20 @@ class NsRpcResponse
         cb @
     else
       cb @
+
+  # Parse custom headers NetSuite provides for tracing/debugging/support cases
+  parseNsHeaders: (cb) ->
+    # Request Timer composite field -> internal request timestamp/server/port
+    if @headers['ns_rtimer_composite']?
+      [rtime, server, srvPort] = @headers['ns_rtimer_composite'].split(':')
+      srvstr = ''
+      for i in [0...server.length] by 2
+        srvstr += String.fromCharCode(parseInt(server.substr(i,2), 16))
+      @nsReqTimer =
+        rtime: rtime
+        serverId: srvstr
+        port: srvPort
+    if typeof cb is 'function' then cb @
 
   # Parses @body after partial validation, sends output to callback, returns result of validation
   parseBody: (format, cb) ->

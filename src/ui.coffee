@@ -6,6 +6,10 @@ rpc = require './rpc'
 qs = require 'querystring'
 fs = require 'fs'
 
+
+# Submodule client extensions and helpers
+shipping = require('./ui/shipping')
+
 # She's a monster of a class, but considering the size of the NetSuite api, that's unavoidable 
 class NsUiClient extends rpc.Client
 
@@ -809,6 +813,7 @@ class ExportedCSV extends FileDownload
 
 # Expose public functions
 module.exports = 
+  shipping: shipping.extend(NsUiClient)
   Client: NsUiClient 
   Session: NsUiSession
   SearchResults: NsSearchResults
