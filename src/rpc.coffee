@@ -3,6 +3,7 @@
 # procedures and managing the cookies necessary to maintain login sessions.
 http = require "http"
 https = require "https"
+url = require 'url'
 qs = require 'querystring'
 zlib = require 'zlib'
 xml = require './xml'
@@ -11,7 +12,7 @@ xml = require './xml'
 # Default handlers for invoking nlapi calls
 JSONR_HANDLER = '/app/common/scripting/nlapijsonhandler.nl'
 XMLR_HANDLER = '/app/common/scripting/nlapihandler.nl'
-SUCCESSFUL_STATUS_CODES = [200, 206, 302]
+SUCCESSFUL_STATUS_CODES = [200, 206, 302] # Considered success by NS rpc client
 
 # Provides convenient ways of calling different RPC handlers and should be extended
 # with specialized requests in sub modules
@@ -55,9 +56,11 @@ class NsRpcClient extends EventEmitter
     # Create the http(s).request and use it to create a response obj
     req = @connection.request options, (r) =>
       res = new NsRpcResponse r, rid, (response) =>
+        # Emit an error event if response is reporting an issue
         if response.error then @emit 'error', response.error, rid
-        # apologize if r, res, and response representing the progression of objects is hard
-        # to think about scope-wise. I just picture the variable like a progress bar, longer = better
+        if 299 < response.statusCode < 400 and response.headers.location?
+          response.followRedirect = (opt..., cback) =>
+            @urlr response.headers.location, opt, cback
         @emit 'response', rid, response, { requestOptions: options }
         cb response
       # update our cookie jar
@@ -68,6 +71,27 @@ class NsRpcClient extends EventEmitter
     if body then req.write(body)
     req.end()
     { request: req, id: rid }
+
+  # Allow for basic URL parsing
+  urlr: (target, options={}, cb) ->
+    u = url.parse target
+    # Allow temporary swapping of connection protocol
+    if u.protocol? is 'http:' and @connection isnt http
+      cref = https
+      @connection = http
+    else if u.protocol? is 'https:' and @connection isnt https
+      cref = http
+      @connection = https
+    else
+      cref = false
+    # Everything else should 
+    path = options.path ? u.pathname ? u.path ? undefined
+    options.host ?= u.host ? @host
+    options.port ?= u.port ? @port
+    options.query ?= u.query ? undefined
+    ur = @request options.method, path, options, cb
+    if cref then @connection = cref
+    ur
 
   # Convenience method for simple GET requests
   get: (path, options={}, cb) ->

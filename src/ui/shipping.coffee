@@ -201,7 +201,6 @@ exports.extend = (client) ->
   # Request shipping info (cost, label enabled, etc.) for a shipping method
   client::getItemShipInfo = (shipMethod, cb) ->
     payload = xml.render(ItemShipRequest(shipMethod))
-    console.log payload
     opts = 
       path:  '/app/accounting/transactions/dynitemship.nl' 
     @jsonr 'getItemShipInfo', [payload], opts, (res) =>
