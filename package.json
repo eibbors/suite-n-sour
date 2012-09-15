@@ -1,10 +1,10 @@
 {
   "name": "suite-n-sour.js",
-  "version": "0.0.11",
+  "version": "0.0.14",
   "author": {
     "name": "Robbie Saunders",
     "email": "r@eibbors.com",
-    "url": "http://eibbors.com"]
+    "url": "http://eibbors.com"
    },
   "description": "NetSuite for Node.js! Implments User Interface, SuiteScript Debugger, Offline Client, Web Store, and SOAP API's with more on the way!",
   "version": "0.0.4",
