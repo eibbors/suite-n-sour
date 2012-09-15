@@ -171,6 +171,16 @@ class ShipItem
 # Extend prototype of passed client type
 exports.extend = (client) ->
 
+  # Private method for handling the xml payloads transmitted over standard
+  # jsonr requests with non-standard endpoints used by shipping api
+  handleShippingResponse = (res, cb) ->
+    if res.result
+      xml.parse res.result, (err, data) =>
+        if err then res.error = err
+        cb data ? null, res
+    else 
+      cb null, res
+
   # Request specific rates based on a set of packages, items, and order info.
   # Can pass RatesRequest class instance, custom XML object, params used to
   # construct a new RatesRequest or plain old text payload
@@ -185,7 +195,8 @@ exports.extend = (client) ->
     opts = 
       method: 'POST'
       path: '/app/common/shipping/dynshippingxml.nl'
-    @jsonr 'getShippingRates', [payload], opts, cb
+    @jsonr 'getShippingRates', [payload], opts, (res) =>
+      handleShippingResponse res, cb
 
   # Request shipping info (cost, label enabled, etc.) for a shipping method
   client::getItemShipInfo = (shipMethod, cb) ->
@@ -194,18 +205,15 @@ exports.extend = (client) ->
     opts = 
       path:  '/app/accounting/transactions/dynitemship.nl' 
     @jsonr 'getItemShipInfo', [payload], opts, (res) =>
-      if res.result
-        xml.parse res.result, (err, data) =>
-          if err then throw err 
-          cb data, res
-      else cb null, res
+      handleShippingResponse res, cb
 
   # Shipping Tax Item Query
   client::getTaxItem = (entityId, state, zip, country, cb) ->
     payload = xml.render(ShipTaxItemRequest(entityId, state, zip, country))
     opts = 
       path:  '/app/common/shipping/dynshiptaxitem.nl'
-    @jsonr 'getTaxItem', [payload], opts, cb
+    @jsonr 'getTaxItem', [payload], opts, (res) =>
+      handleShippingResponse res, cb
 
   # Return model classes, helpers, etc.
   return {
