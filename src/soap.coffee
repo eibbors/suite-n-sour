@@ -5,11 +5,20 @@
 rpc = require './rpc'
 xml = require './xml'
 wsdl = require './wsdl/index'
+xmlns = require './wsdl/xmlns'
 
-#------------------------------------------------------------
-# Webservices base classes building off of xml SimpleType foundation
-#------------------------------------------------------------
+# Qualified name class to parse tags in "ns:name" format and provide
+# access to uri and namespace helpers
+class QName
+  constructor: (@namespace, @name, @uri) ->
+    if arguments.length is 1 and @namespace.indexOf(":") > 0
+      parts = @namespace.split(':')
+      @namespace = parts[0]
+      @name = parts[1..]
+    @namespace ?= 'tns'
+    @uri ?= xmlns.resolveNamespace(@namespace)
 
+# Simple Types 
 xsd = {}
 
 class xsd.String extends xml.SimpleType
@@ -24,11 +33,20 @@ class xsd.Number extends xml.SimpleType
 
 class xsd.DateTime extends xml.SimpleType
     setValue: (val) -> 
-    #TODO: setValue / isValid / toString
+      if val instanceof Date then @value = val
+      else if val then @value = new Date(Date.parse(val))
+      else @value = new Date()
 
-class EnumType extends xml.SimpleType
-    constructor: (@name, @restriction, options) ->
+    toString: ->
+      return super() unless @value?
+      attrs = ' '+("#{k}=\"#{v}\"" for k,v of @attributes).join(' ')  
+      "<#{@name}#{attrs}>#{@value.toUTCString()}</#{@name}>"
+
+
+class EnumType extends xsd.String 
+    constructor: (@name, @type, options) ->
       super @name, @value, options
+      @qname = new Qname @type
       @restriction = options.restriction ? []
 
     setValue: (val) -> 
@@ -38,8 +56,8 @@ class EnumType extends xml.SimpleType
 # Complex Types are esentially a simple type with support for child elements
 # rather than primitive data types
 class ComplexType extends xml.SimpleType
-  constructor: (@name, options) ->
-    @type = value.type ? 'tns:ComplexType'
+  constructor: (@name, @type='tns:ComplexType', options) ->
+    @qname = new Qname @type
     @attributes = options.attributs ? {}
     @elements = {}
     for k, v of options.elements
@@ -80,41 +98,22 @@ class ComplexType extends xml.SimpleType
     val += ">#{(el.toString() for k,el of @elements).join('\n')}</#{@name}>"
     val
 
+util = require 'util'
+dump = (obj...) ->
+  for o in obj
+    console.log util.inspect o, true, 10
 
-# We'll always be using the SOAP namespace for obvious reasons. While every
-# Request type is part of platformMsgs and the basis for every parameter
-# begins with a RecordRef, BaseRef, or some other type out of platformCore
-BOOTSTRAP_XMLNS =
-  soap: "http://schemas.xmlsoap.org/soap/envelope/"
-  platformMsgs:  "urn:messages_2012_2.platform.webservices.netsuite.com"
-  platformCore: "urn:core_2012_2.platform.webservices.netsuite.com"
-
-class SoapParam
-  constructor: (@type, @attributes, @elements) ->
-
-class SoapRequest
-  constructor: (options) ->
-    @namespaces = BOOTSTRAP_XMLNS
-    @header = {}
-    @body = {}
-
-  # Add or update a param in the envelope header
-  # Standard usage = ('param', 'val123')
-  # Object with param props = ({param: 'a', p2: 987})
-  # Replace the entire header = (null, {p1: 'a', p2: false})
-  setHeader: (name, param) ->
-    addNamespace param
-    @header[name] = param
-
-  addNamespace: (param) ->
-    if param.nsId and param.urn # have namespace id AND urn
-      @namespaces[param.nsId] ?= param.urn
-    else if param.nsId # just have namespace id so fetch urn
-      @namespaces[param.nsId] ?= wsdl.fetchNamespace(param.type).urn
-    else if param.urn # just have urn so check for existing or make new one
-      for k,v of @namespaces 
-        if v is param.urn
-          param.nsId = k
-          break
-    param
-
+resolveSchema = (type) ->
+  dump xns = xmlns.resolveNamespace type
+  defs = wsdl.schemas[xns.nsId].complexTypes
+  schema = defs[xns.local] ? null
+  if schema?.base? 
+    dump schema.base 
+    dump b = resolveSchema(schema.base)
+    (schema[k] = v) for k, v of b
+  schema
+  
+# Finally got schema nonsense working! yay!
+dump x = resolveSchema('LoginRequest')
+dump p = resolveSchema('Passport')
+dump ref = resolveSchema('platformCore:RecordRef')

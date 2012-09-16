@@ -51,18 +51,18 @@ schemas =
 # Load a directory that can be used to look up the
 # proper namespace by it's formal id (ie platformMsgs)
 # or look it up by member/object type
-xmlns = require './xmlns'
+# xmlns = require './xmlns'
 
 
-fetchNamespace = (type) ->
-  if type.indexOf(':') > 0
-    [nsId, typeId] = type.split(':')
-    { typeId, nsId, urn: xmlns[nsId] ? xmlns[typeId] ? xmlns.tns }
-  else 
-    { typeId: type, nsId: null, urn: xmlns[type] ? xmlns.tns } 
+# # fetchNamespace = (type) ->
+# #   if type.indexOf(':') > 0
+# #     [nsId, typeId] = type.split(':')
+# #     { typeId, nsId, urn: xmlns[nsId] ? xmlns[typeId] ? xmlns.tns }
+# #   else 
+# #     { typeId: type, nsId: null, urn: xmlns[type] ? xmlns.tns } 
+# console.log fetchNamespace 'platformCore:RecordRef'
+# console.log schemas['platformCore']['complexTypes']['RecordRef']
+# class SuiteTalkObject
+#   constructor: (type, init) ->
 
-
-console.log fetchNamespace 'platformCore:RecordRef'
-console.log schemas['platformCore']['complexTypes']['RecordRef']
-class SuiteTalkObject
-  constructor: (type, init) ->
+module.exports = { enums, schemas }

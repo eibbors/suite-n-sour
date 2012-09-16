@@ -214,7 +214,14 @@ class NsRpcResponse
         threadId: rtime
         serverId: srvstr
         port: srvPort
+    if @headers['nlcachenote']?
+      fcache = /FromMediaCache=(T|F)/.exec @headers['nlcachenote']
+      if fcache then @fromMediaCache = (fcache[1] is 'T')
+    if @headers['nlredirectreason']?
+      @redirectReason = @headers['nlredirectreason']
+      
     if typeof cb is 'function' then cb @
+
 
   # Parses @body after partial validation, sends output to callback, returns result of validation
   parseBody: (format, cb) ->
