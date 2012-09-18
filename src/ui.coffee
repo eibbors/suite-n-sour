@@ -9,14 +9,25 @@ fs = require 'fs'
 # Submodule 'mixins' to cut down on clutter
 shipping = require('./ui/shipping')
 search = require('./ui/search')
+media = require('./ui/media')
 
 # She's a monster of a class, but considering the size of the NetSuite api, that's unavoidable 
 class NsUiClient extends rpc.Client
 
   constructor: (options={}) ->
     super
-    @session = {}
-  
+    @session = {}  
+
+  # Used to generate, request, and handle nlqs formatted urls
+  nlqsr: (type='xml', path='/', options={}, cb) ->
+    nlq = options.nlquery ? {}
+    switch type
+      when 'xml'
+        nlq.xml = 'T'
+      when 'script'
+        nlq.s = 'T'
+    @get "#{path}__#{qs.stringify(nlq)}.nlqs", options, cb
+
   # Send nlapiRequests (NetSuite's internal xml api)
   nlapir: (attr, elements, options, cb) ->
     elements['@'] ?= attr # type attribute can be overridden in the elements obj
@@ -368,14 +379,8 @@ class NsUiClient extends rpc.Client
     @export path, options, cb
 
  #----------------------------------------------------------
- # Various media/template calls
+ # Misc. requests
  #----------------------------------------------------------
-
-  fetchSiteMedia: (id, cb) ->
-    @get '/app/site/media/sitemedia.nl', {query: {id}}, cb
-
-  previewMedia: (id, cb) ->
-    @get '/core/media/previewmedia.nl', {query: {id}}, cb
 
   previewTemplate: (id, entity, cb) ->
     query = {id}
@@ -609,9 +614,12 @@ class QuickSummary
     fld for i, fld of @fields when fld.display is 'visible'
 
 
+# Implement mixins that don't return helpers
+media.extend(NsUiClient)
+
 # Expose public functions
 module.exports = 
-  # Implement mixins for ui client
+  # Implement mixins that return helpers
   shipping: shipping.extend(NsUiClient)
   search: search.extend(NsUiClient)
   # Local types

@@ -14,19 +14,19 @@ class NsWebStoreClient extends rpc.Client
   # if you're familiar with the URL parameters to use
   shopr: (path, options, cb) ->
     query = 
-      c: options.company ? @session.companyId ? null
-      n: options.siteNum ? @session.siteNum ? 1
-      sc: options.section ? @session.section ? null
+      c: options.company ? options.c ? @session.companyId ? null
+      n: options.siteNum ? options.n ? @session.siteNum ? 1
+      sc: options.section ? options.sc ? @session.section ? null
       category: options.category ? @session.category ? null
-      id: options.itemId ? null
-      it: options.itemType ? 'A'
-      search: options.search ? null
-      range: options.range ? null
-      ext: if options.ext then 'T' else null
-      logoff: if options.logoff then 'T' else null
-      newcust: if options.newCust then 'T' else null
-      continue: options.continueURL ? null
-      redirect: options.redirectURL ? null
+      id: options.itemId ? options.id ? @session.item?.id ? null
+      it: options.itemType ? @session.item?.it ? null
+      # search: options.search ? null
+      # range: options.range ? null
+      # ext: if options.ext then 'T' else null
+      # logoff: if options.logoff then 'T' else null
+      # newcust: if options.newCust then 'T' else null
+      # continue: options.continueURL ? null
+      # redirect: options.redirectURL ? null
     delete query[k] for k,v of query when v is null
     @get path ? '/s.nl/.f', { query }, cb
 
@@ -37,29 +37,57 @@ class NsWebStoreClient extends rpc.Client
     @session.section = section ? null
     @session.category = category ? null
 
-  # WSDK item data queries, requires an itemId
+  # WSDK item query - name
   getItemName: (itemId, cb) ->
     @shopr '/app/site/query/getitemname.nl', {itemId}, cb
+
+  # WSDK item query - price
   getItemPrice: (itemId, cb) ->
     @shopr '/app/site/query/getitemprice.nl', {itemId}, cb
+
+  # WSDK item query - weight
   getItemWeight: (itemId, cb) ->
     @shopr '/app/site/query/getitemweight.nl', {itemId}, cb
+
+  # WSDK item query - short description
   getShortItemDescription: (itemId, cb) ->
     @shopr '/app/site/query/getitemsdescr.nl', {itemId}, cb
+
+  # WSDK item query - long description
   getLongItemDescription: (itemId, cb) ->
     @shopr '/app/site/query/getitemldescr.nl', {itemId}, cb
+
+  # WSDK item query - featured description
   getFeaturedItemDescription: (itemId, cb) ->
     @shopr '/app/site/query/getitemfdescr.nl', {itemId}, cb
 
   # Request the current cart subtotal
   getCurrentSubtotal: (cb) ->
     @shopr '/app/site/query/getcarttotal.nl', {}, cb
+
   # Request the number of items currently in the cart
   getNumberOfCartItems: (cb) ->
     @shopr '/app/site/query/getcartitemcount.nl', {}, cb
 
   # NOTE: Following under construction!
   # -------------------------------
+
+  # Ping NetSuite's tracker servlet
+  pingTracker: (type='store', referer, options, cb) ->    
+    query = 
+      type: type
+      c: options.company ? options.c ? @session.companyId ? null
+      n: options.siteNum ? options.n ? @session.siteNum ? null
+      referer: referer ? ''
+    if type is 'store'
+      query.sc = options.section ? 1
+      query.category = options.category ? ''
+      query.it = options.it ? ''
+      query.itemid = options.itemid ? ''
+    if type is 'page'
+      query.url = options.url ? null
+      query.siteroot = options.siteroot ? null # nlcorp ex: live_6_23_05 
+    @get '/app/site/hit/tracker.nl?', { query }, cb
 
   # The base 'add-to-cart' rpc, options argument allows for customization
   addItemToCart: (id, qty, options, cb) ->
@@ -83,6 +111,26 @@ class NsWebStoreSession
     @visitorId = options.visitorId ? null
     @shopperId = options.shopperId ? null
 
+class NsWebStore
+  constructor: (options) ->
+    @company = options.company ? options.c ? null
+    @siteNum = options.siteNum ? options.n ? null
+    @domains =
+      shopping: options.customDomain ? 'shopping.netsuite.com'
+      checkout: options.customDomain ? 'checkout.netsuite.com'
+    @sections = options.sections ? {}
+    @categories = options.categories ? {}
+    @items = options.items ? {}
+    @section = options.sections ? options.sc ? null
+
+class NsWebStoreItem
+  constructor: (@id, @type='A', options) ->
+    @name = options.name ? null
+    @price = options.price ? null
+    @weight = options.weight ? null
+    @sDescr = options.sDescr ? null
+    @lDescr = options.lDescr ? null
+    @fDescr = options.fDescr ? null
 
 module.exports =
   Client: NsWebStoreClient

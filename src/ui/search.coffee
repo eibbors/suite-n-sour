@@ -1,3 +1,6 @@
+# suite-n-sour.js :: ui/search.coffee - by Robbie Saunders (eibbors.com)
+# Mixin providing search related extensions + models for ui clients
+
 # Used to model NetSuite searches (mimics nlobjSearch)
 class Search
   constructor: (@type, @searchId, @filters=[], @columns=[]) ->

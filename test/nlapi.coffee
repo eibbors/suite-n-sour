@@ -1,20 +1,16 @@
 cfg = require './cfg'
 snsour = require '../index'
-util = require 'util'
 
-# got tired of typing this hah
-dump = (obj...) ->
-  for o in obj
-    console.log util.inspect o, true, 10
+
 
 # login with the details stored in ./cfg.coffee
 n$ = new snsour.ui.Client(host: 'system2.netsuite.com')
 n$.on 'error', console.error
 n$.login cfg.email, cfg.password, (res) ->
   
-  n$.getItemShipInfo '4', dump
+  n$.getItemShipInfo '4', cfg.dump
 
-  # dump res
+  # cfg.dump res
 
   ## Uncomment out one of the samples below or uncomment all for mass testing
 

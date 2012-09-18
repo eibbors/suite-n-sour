@@ -1,13 +1,8 @@
 cfg = require './cfg'
 snsour = require '../index'
-util = require 'util'
 
-# got tired of typing this hah
-dump = (obj...) ->
-  for o in obj
-    console.log util.inspect o, true, 10
 _dmp = ->
-  console.log util.inspect arguments[0], true, 10
+  cfg.dump arguments[0]
 
 DEST_EMAIL = 'r@eibbors.com'
 SS_DUMP_ENV = 
@@ -39,10 +34,10 @@ n$.login cfg.email, cfg.password, (res) ->
   # Begin a new adhox debugging session
   n$.debugAdhoc SS_DUMP_ENV, (dbgr, res) ->
     # Dump the initial adhoc request state
-    dump dbgr
+    cfg.dump dbgr
     # Just mess around a bit
     n$.stepOver _dmp
     n$.stepInto _dmp
     n$.stepOver _dmp
     # Finish the script execution
-    n$.go dump
+    n$.go cfg.dump
