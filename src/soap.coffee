@@ -6,7 +6,7 @@ rpc = require './rpc'
 xml = require './xml'
 wsdl = require './wsdl/index'
 xmlns = require './wsdl/xmlns'
-
+ 
 # Qualified name class to parse tags in "ns:name" format and provide
 # access to uri and namespace helpers
 class QName

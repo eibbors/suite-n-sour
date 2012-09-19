@@ -6,13 +6,25 @@ snsour = require '../index'
 # login with the details stored in ./cfg.coffee
 n$ = new snsour.ui.Client(host: 'system2.netsuite.com')
 n$.on 'error', console.error
+# n$.on 'request', cfg.dump
+# n$.on 'response', cfg.dump
 n$.login cfg.email, cfg.password, (res) ->
   
-  n$.getItemShipInfo '4', cfg.dump
-
   # cfg.dump res
 
   ## Uncomment out one of the samples below or uncomment all for mass testing
+  
+  # n$.getItemShipInfo '4', cfg.dump
+
+  # n$.getAutoSuggestions 'item', cfg.dump
+
+  # n$.mediaExists 'taskids.jS', 13, cfg.dump
+  # n$.previewMediaFile  11, (res) ->
+  #   if res.content?.filename? then res.saveFile()
+
+  # n$.getSiteMedia 1, (res) ->
+  #   res.followRedirect?(cfg.dump)
+
 
   # n$.getTotalScriptGovernance -1, console.log
   

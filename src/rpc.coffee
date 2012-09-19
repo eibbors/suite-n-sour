@@ -6,8 +6,9 @@ https = require "https"
 url = require 'url'
 qs = require 'querystring'
 zlib = require 'zlib'
-xml = require './xml'
+fs = require 'fs'
 {EventEmitter} = require 'events'
+xml = require './xml'
 
 # Default handlers for invoking nlapi calls
 JSONR_HANDLER = '/app/common/scripting/nlapijsonhandler.nl'
@@ -85,10 +86,9 @@ class NsRpcClient extends EventEmitter
     else
       cref = false
     # Everything else should 
-    path = options.path ? u.pathname ? u.path ? undefined
+    path = options.path ? u.path ? "#{u.pathname}?"
     options.host ?= u.host ? @host
     options.port ?= u.port ? @port
-    options.query ?= u.query ? undefined
     ur = @request options.method, path, options, cb
     if cref then @connection = cref
     ur

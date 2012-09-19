@@ -162,6 +162,17 @@ exports.extend = (client) ->
   client::searchRecordSlice = (type, searchId, filters=[], columns=[], start, end, cb) ->
     @jsonr 'searchRecordSlice', [type, searchId, filters, columns, start, end], {}, cb
 
+  # Fetches auto suggestions for uber search (global search) terms
+  client::getAutoSuggestions = (val, cb) ->
+    @circid ?= 0
+    query = { circid: ++@circid, mapkey: 'uberautosuggest', cur_val: val }  
+    @get '/app/common/autosuggest.nl', { query }, (res) =>
+      if res.error
+        cb null, res
+      else
+        res.parseBody 'json', (parsed) =>
+          cb parsed, res
+
   # Return model classes, helpers, etc.
   return {
     Search: Search
