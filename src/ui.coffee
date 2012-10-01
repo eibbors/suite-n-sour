@@ -614,14 +614,14 @@ class QuickSummary
     fld for i, fld of @fields when fld.display is 'visible'
 
 
-# Implement mixins that don't return helpers
-media.extend(NsUiClient)
+
 
 # Expose public functions
 module.exports = 
   # Implement mixins that return helpers
   shipping: shipping.extend(NsUiClient)
   search: search.extend(NsUiClient)
+  media: media.extend(NsUiClient)
   # Local types
   Client: NsUiClient 
   Session: NsUiSession

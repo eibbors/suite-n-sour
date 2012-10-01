@@ -1,18 +1,21 @@
 cfg = require './cfg'
 snsour = require '../index'
 
-
-
 # login with the details stored in ./cfg.coffee
 n$ = new snsour.ui.Client(host: 'system2.netsuite.com')
 n$.on 'error', console.error
 # n$.on 'request', cfg.dump
 # n$.on 'response', cfg.dump
 n$.login cfg.email, cfg.password, (res) ->
-  
   # cfg.dump res
 
   ## Uncomment out one of the samples below or uncomment all for mass testing
+
+  # mf = new snsour.ui.media.File { folder: -8 }
+  # mf.loadFile './mock/test.csv'
+  # n$.addMediaFile mf, { unzip: true }, cfg.dump
+
+  # n$.addMediaLink 'http://github.com/eibbors/suite-n-sour.git', '-8', {}, cfg.dump
   
   # n$.getItemShipInfo '4', cfg.dump
 

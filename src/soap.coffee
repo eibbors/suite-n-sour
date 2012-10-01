@@ -57,14 +57,14 @@ class EnumType extends xsd.String
 # rather than primitive data types
 class ComplexType extends xml.SimpleType
   constructor: (@name, @type='tns:ComplexType', options) ->
-    @qname = new Qname @type
-    @attributes = options.attributs ? {}
+    @qname = xmlns.resolveNamespace type
+    @attributes = options.attributes ? {}
     @elements = {}
     for k, v of options.elements
       @defElem k, v
     if options.value then setValues options.value
 
-  defElem: (name, type) ->
+  defElem: (name, value) ->
     switch value.type
       when 'xsd:string'
         @elements[name] = new xsd.String(name, value)
@@ -104,16 +104,22 @@ dump = (obj...) ->
     console.log util.inspect o, true, 10
 
 resolveSchema = (type) ->
-  dump xns = xmlns.resolveNamespace type
+  xns = xmlns.resolveNamespace type
   defs = wsdl.schemas[xns.nsId].complexTypes
   schema = defs[xns.local] ? null
   if schema?.base? 
     dump schema.base 
     dump b = resolveSchema(schema.base)
     (schema[k] = v) for k, v of b
+  schema.qname = xns
   schema
   
 # Finally got schema nonsense working! yay!
 dump x = resolveSchema('LoginRequest')
+
 dump p = resolveSchema('Passport')
-dump ref = resolveSchema('platformCore:RecordRef')
+dump rr = resolveSchema(p.elements.role.type)
+# dump lr = new ComplexType(resolveSchema('Passport'))
+# dump lr = new ComplexType('login', 'LoginRequest', resolveSchema('LoginRequest'))
+# dump p = resolveSchema('Passport')
+# dump ref = resolveSchema('platformCore:RecordRef')

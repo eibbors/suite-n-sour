@@ -113,6 +113,13 @@ class NsRpcClient extends EventEmitter
         'content-type': 'application/x-www-form-urlencoded; charset=utf-8'
     @post path, options, cb
  
+  # Method used to invoke multipart/form-data requests MultiPartForm (rpc.MPForm()
+  mpformr: (path, mpform, cb) ->
+    throw('Must pass an object with fields/files properties or MPForm class instance') unless typeof mpform is 'object' 
+    unless mpform.buildRequestOptions?
+      mpform = new MultiPartForm mpform.fields ? {}, mpform.files ? {}, mpform
+    @post path, mpform.buildRequestOptions(), cb
+
   # Emulates NetSuite's JSON RPC requests, their newer nlapi call schema 
   jsonr: (jrmethod, jrparams, options={}, cb) =>
     rid = ++@requestId
@@ -268,8 +275,39 @@ class NsRpcResponse
     else
       fs.writeFileSync filename, @body, @content.charset ? 'utf-8'
 
+# This class handles the tedious syntax required for multipart/form-data requests
+# fields object = simple key-value map { field1: 'val1', field2: 2 } ...
+# files object = key-value map where value contains the following properties:
+#   filename: 'example.txt', type: 'text/plain' (mime type), value: 'file contents...'
+class MultiPartForm
+  constructor: (@fields={}, @files={}, options={}) ->
+    # Sample generated boundary: '----------------38429f62b5379ecc4ef8ach51c0f2gb'
+    @boundary = options.boundary ? "----------------#{Math.random().toString(22).substr(2)}"
+
+  addField: (name, value) ->
+    @fields[name] = value
+
+  addFields: (obj) ->
+    for k,v of obj
+      @fields[k] = v
+
+  addFile: (name, filename, type, value) ->
+    @files[name] = { filename, type, value }
+
+  serializeBody: ->
+    fld  = ("\r\nContent-Disposition: form-data; name=\"#{k}\"\r\n\r\n#{v}\r\n" for k,v of @fields)
+    file = ("\r\nContent-Disposition: form-data; name=\"#{k}\"; filename=\"#{v.filename}\"\r\nContent-Type: #{v.type}\r\n\r\n#{v.value}\r\n" for k,v of @files)
+    body = ([''].concat fld, file, "--").join "--#{@boundary}"
+    body
+
+  buildRequestOptions: (options={}) ->
+    console.log options.headers ?= {}
+    console.log options.body = @serializeBody()
+    console.log options.headers['content-type'] = "multipart/form-data; boundary=#{@boundary}"
+    options
 
 # Expose public classes
 module.exports = 
   Client: NsRpcClient
   Response: NsRpcResponse
+  MPForm: MultiPartForm
