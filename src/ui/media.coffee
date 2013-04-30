@@ -121,7 +121,19 @@ exports.extend = (client) ->
     @post '/app/common/media/mediaitemfolders.nl', { query, body }, cb
 
   # TODO: Media folder creation
-  client::createMediaFolder = ->
+  client::createMediaFolder = (name,folder,parentFolder,options,cb) ->
+    query = 
+      name: name
+      folder: folder
+      parent_display: parentFolder
+      foldertype: "DEFAULT"
+      type: "filecabinet"
+      inpt_foldertype: "Documents and Files"
+      description: options.description ? ""
+      inpt_group: options.group ? ""
+      isprivate: if options.isprivate then 'T' else 'F'
+    
+    @formr '/app/common/media/mediaitemfolder.nl?parent='+folder, query, cb
 
   # TODO: multipart/form data to get this working... for now this is just a placeholder
   client::addMediaFile = (mediafile, options, cb) ->
