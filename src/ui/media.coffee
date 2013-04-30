@@ -121,7 +121,7 @@ exports.extend = (client) ->
     body = ("sa#{fid}fldF=T" for fid in fileIds).join('&')
     @post '/app/common/media/mediaitemfolders.nl', { query, body }, cb
 
-  # Basic folder creation implementation# 
+  # Basic folder creation implementation
   client::createMediaFolder = (name,folder,parentFolder,options,cb) ->
     query = 
       name: name
