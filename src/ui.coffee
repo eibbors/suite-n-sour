@@ -10,6 +10,7 @@ fs = require 'fs'
 shipping = require('./ui/shipping')
 search = require('./ui/search')
 media = require('./ui/media')
+ssp = require('./ui/media')
 
 # She's a monster of a class, but considering the size of the NetSuite api, that's unavoidable 
 class NsUiClient extends rpc.Client
@@ -622,6 +623,7 @@ module.exports =
   shipping: shipping.extend(NsUiClient)
   search: search.extend(NsUiClient)
   media: media.extend(NsUiClient)
+  ssp: ssp.extend(NsUiClient)
   # Local types
   Client: NsUiClient 
   Session: NsUiSession
