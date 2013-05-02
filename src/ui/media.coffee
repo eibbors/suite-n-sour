@@ -24,6 +24,7 @@ class MediaFile
     # configurable netsuite record fields
     @filetype = options.type ? 'DOCUMENT'
     @folder = options.folder ? null
+    @parentFolder = options.parentFolder ? null
     @encoding = options.encoding?.id ? options.encoding ? NS_TEXTFILE_ENCODING.UTF8.id
     @url = options.url ? null
     # Parameters required for the multi-part form data
@@ -34,7 +35,7 @@ class MediaFile
   # Build (or append to passed) MPForm object (any object with fields & files props)
   # Note: we're not actually creating an MPForm, just the initializable options object
   getMPFormParams: (obj={}) ->
-    (obj.fields[k] = v ? '') for k,v of @ when k in ['id', 'filetype', 'folder', 'encoding', 'url']
+    (obj.fields[k] = v ? '') for k,v of @ when k in ['id', 'filetype', 'folder', 'parentFolder', 'encoding', 'url']
     if @url is null # Only necessary when url not included
       obj.files ?= {}
       obj.files['mediafile'] = 
@@ -120,8 +121,20 @@ exports.extend = (client) ->
     body = ("sa#{fid}fldF=T" for fid in fileIds).join('&')
     @post '/app/common/media/mediaitemfolders.nl', { query, body }, cb
 
-  # TODO: Media folder creation
-  client::createMediaFolder = ->
+  # Basic folder creation implementation
+  client::createMediaFolder = (name,folder,parentFolder,options,cb) ->
+    query = 
+      name: name
+      folder: folder
+      parent_display: parentFolder
+      foldertype: "DEFAULT"
+      type: "filecabinet"
+      inpt_foldertype: "Documents and Files"
+      description: options.description ? ""
+      inpt_group: options.group ? ""
+      isprivate: if options.isprivate then 'T' else 'F'
+    
+    @formr '/app/common/media/mediaitemfolder.nl?parent='+folder, query, cb
 
   # TODO: multipart/form data to get this working... for now this is just a placeholder
   client::addMediaFile = (mediafile, options, cb) ->
