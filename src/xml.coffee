@@ -88,6 +88,11 @@ qname = (n, tns) ->
   [ns..., name] = n.split(':')
   {ns: ns.join('') or tns ? null, name}
 
+class Node
+  constructor: (@type, @attributes={}, @value) ->
+    @type ?= @constructor.type ? null
+    unless @type? throw "Every node must have a type name! Try again"
+
 # Felt like I was reinventing the wheel again with this class, but I could not
 # locate a CoffeeScript or JS module that would work with NetSuite's SOAP webservices
 # Anyway, this is a more formal way of modeling XML elements than plain JSON, which
