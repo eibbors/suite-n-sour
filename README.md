@@ -8,7 +8,7 @@
 
 ## Installation
 
-    $ npm install suite-n-sour
+    $ npm install suite-n-sour.js
 
   The easiest way is to install her with npm, but you can of course also clone this repository:
 
@@ -21,7 +21,7 @@
   way to see how everything ticks.
 
 ```coffeescript
-snsour = require 'suite-n-sour'
+snsour = require 'suite-n-sour.js'
 nsui = new snsor.ui.Client(host: 'system.netsuite.com')
 nsui.login 'your@email.com', 'yourpassword', (res) ->
   console.log res
